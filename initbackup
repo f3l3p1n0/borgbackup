@@ -1,0 +1,34 @@
+#!/bin/bash
+
+PASSPHRASE_FILE="/home/$USER/scripts/backup/.borg-passphrase"
+export BORG_PASSCOMMAND="cat $PASSPHRASE_FILE"
+
+# Ruta del repositorio Borg
+REPO="/mnt/backups/repositorio"
+
+# Fecha y hora
+NOW=$(date +%Y-%m-%d_%H-%M)
+
+# Directorios a respaldar
+SRC1="DIRECTORIO"
+SRC2="DIRECTORIO"
+
+# Ruta donde se guardará el dump de la base de datos
+BACKUP_DIR="/mnt/backups"
+mysqldump --defaults-file=/home/$USER/.my.cnf --databases "NOMBRE_BBDD" > "$BACKUP_DIR/NOMBRE_BBDD-$NOW.sql"
+
+# Ejecutar backup
+echo "Iniciando backup..."
+borg create --verbose --filter AME --stats --show-rc \
+  "$REPO::backup-$NOW" \
+  "$SRC1" \
+  "$SRC2" \
+  "$BACKUP_DIR/NOMBRE_BBDD-$NOW.sql"
+
+# Prune para retención
+echo "Limpiando backups antiguos..."
+borg prune -v --list "$REPO" --keep-daily=7 --keep-weekly=4 --keep-monthly=6
+
+# Limpiar variables de entorno sensibles y el dump de base de datos
+unset BORG_PASSCOMMAND
+rm "$BACKUP_DIR/NOMBRE_BBDD-$NOW.sql"
